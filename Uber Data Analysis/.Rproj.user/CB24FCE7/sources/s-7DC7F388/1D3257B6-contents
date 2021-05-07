@@ -1,0 +1,8 @@
+if (!require("pacman")) install.packages("pacman")
+
+pacman::p_load(pacman, shiny, shinythemes)
+pacman::p_load(ggplot2, ggthemes, lubridate,
+               dplyr, tidyr, DT, scales)
+pacman::p_load(wesanderson)
+
+runExample("02_text")

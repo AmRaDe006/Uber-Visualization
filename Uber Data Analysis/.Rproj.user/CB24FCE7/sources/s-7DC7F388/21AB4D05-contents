@@ -1,0 +1,173 @@
+#Web app interface
+
+#Uber Data Analysis
+
+# LOADING STUFF ###############################################################
+
+if (!require("pacman")) install.packages("pacman")
+
+pacman::p_load(pacman, shiny, shinythemes)
+pacman::p_load(ggplot2, ggthemes, lubridate,
+               dplyr, tidyr, DT, scales)
+pacman::p_load(wesanderson)
+
+# LOADING DATA ################################################################
+
+colors = c("#CC1011", "#665555", "#05a399", "#cfcaca", "#f5e840", "#0683c9", "#e075b0")
+
+apr_data <- read.csv("E:/Semester 4 (2nd yr)/CS299/R - Uber Data Analysis/Uber-dataset/uber-raw-data-apr14.csv")
+may_data <- read.csv("E:/Semester 4 (2nd yr)/CS299/R - Uber Data Analysis/Uber-dataset/uber-raw-data-may14.csv")
+jun_data <- read.csv("E:/Semester 4 (2nd yr)/CS299/R - Uber Data Analysis/Uber-dataset/uber-raw-data-jun14.csv")
+jul_data <- read.csv("E:/Semester 4 (2nd yr)/CS299/R - Uber Data Analysis/Uber-dataset/uber-raw-data-jul14.csv")
+aug_data <- read.csv("E:/Semester 4 (2nd yr)/CS299/R - Uber Data Analysis/Uber-dataset/uber-raw-data-aug14.csv")
+sep_data <- read.csv("E:/Semester 4 (2nd yr)/CS299/R - Uber Data Analysis/Uber-dataset/uber-raw-data-sep14.csv")
+
+data_2014 <- rbind(apr_data, may_data, jun_data, jul_data, aug_data, sep_data)
+
+#summary(data_2014)
+
+data_2014$Date.Time <- as.POSIXct(data_2014$Date.Time,
+                                  format = "%m/%d/%Y %H:%M:%S")
+
+data_2014$Time <- format(as.POSIXct(data_2014$Date.Time,
+                                    format="%m/%d/%Y %H:%M:%S"),
+                         format="%H:%M:%S")
+
+data_2014$Date.Time <- ymd_hms(data_2014$Date.Time)
+
+data_2014$day <- factor(day(data_2014$Date.Time))
+data_2014$month <- factor(month(data_2014$Date.Time, label=TRUE))
+data_2014$year = factor(year(data_2014$Date.Time))
+data_2014$dayofweek <- factor(wday(data_2014$Date.Time, label=TRUE))
+
+data_2014$hour <- factor(hour(hms(data_2014$Time)))
+data_2014$minute <- factor(minute(hms(data_2014$Time)))
+data_2014$second <- factor(second(hms(data_2014$Time)))
+
+# PAGE DESIGN #################################################################
+
+ui <- fluidPage(theme = shinytheme("united"),
+                
+                titlePanel("Uber Data Analysis"),
+                
+                sidebarLayout(
+                  sidebarPanel(
+                    
+                    conditionalPanel(
+                      'input.graphGroup === "Histograms"',
+                      helpText("Will decide the plot axis here"),
+                      selectInput("histx", "Choose X axis:",
+                                  c("Hour of the Day" = "hour", "Day" = "day", "Month" = "month", "Base of Operation" = "Base")
+                                  ),
+                      
+                      textInput("txt1", "Given Name:", ""),
+                      textInput("txt2", "Surname:", "")
+                    ),
+                    
+                    conditionalPanel(
+                      'input.graphGroup === "HeatMaps"',
+                      helpText("Will decide the heatmap plot axes here")
+                    ),
+                    
+                    conditionalPanel(
+                      'input.graphGroup === "GeoPlot"',
+                      helpText("Will decide if Base inclusive or not here")
+                    )
+                  ),
+                  
+                  mainPanel(
+                    
+                    tabsetPanel(
+                      id = 'graphGroup',
+                      tabPanel("Histograms",
+                               
+                               verbatimTextOutput("txtout"),
+                               DT::dataTableOutput("table"),
+                               plotOutput(outputId = "hist_graph")
+                               
+                               ),
+                      
+                      tabPanel("HeatMaps",
+                               
+                               plotOutput(outputId = "heat_map")
+                               
+                               ),
+                      
+                      tabPanel("GeoPlot",
+                               
+                               helpText("Hello there, this is the geo plot tab"),
+                               plotOutput(outputId = "geo_plot")
+                               
+                               )
+                      
+                    )
+                  )
+                )
+                
+                
+                
+)
+
+
+server <- function(input, output, session){
+  
+  
+  
+  output$table <- DT::renderDataTable(DT::datatable({
+
+    if(input$histx == "hour"){
+      hist_x_data <- data_2014 %>%
+        group_by(hour) %>%
+        dplyr::summarize(Total = n())
+    }
+
+    if(input$histx == "day"){
+      hist_x_data <- data_2014 %>%
+        group_by(day) %>%
+        dplyr::summarize(Total = n())
+    }
+
+    if(input$histx == "month"){
+      hist_x_data <- data_2014 %>%
+        group_by(month) %>%
+        dplyr::summarize(Total = n())
+    }
+
+    if(input$histx == "Base"){
+      hist_x_data <- data_2014 %>%
+        group_by(Base) %>%
+        dplyr::summarize(Total = n())
+    }
+
+    hist_x_data
+  }))
+
+  output$hist_graph <- renderPlot({
+    
+    if(input$histx == "hour"){
+      ggplot(hist_x_data, aes(hour, Total))+
+        geom_bar(stat="identity", fill="turquoise", color="purple")+
+        #ggtitle("Trips each Hour")+
+        theme(legend.position="none")+
+        xlab("Hours")+
+        ylab("Trips")+
+        scale_y_continuous(labels = comma)
+    }
+    
+    if(input$histx == "day"){
+      ggplot(hist_x_data, aes(day, Total))+
+        geom_bar(stat="identity", fill="turquoise", color="purple")+
+        ggtitle("Trips each Day")+
+        xlab("Day")+
+        ylab("Trips")+
+        theme(legend.position="none")+
+        scale_y_continuous(labels=comma)
+    }
+    
+  })
+  
+}
+
+shinyApp(ui = ui, server = server)
+
+

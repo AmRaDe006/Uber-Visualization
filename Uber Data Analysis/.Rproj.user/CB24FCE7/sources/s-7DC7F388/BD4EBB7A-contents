@@ -1,0 +1,23 @@
+library(shiny)
+
+ui=fluidPage(
+  selectInput('selecter', "Choose ONE Item", choices = c("small","big")),
+  selectizeInput('chooser', 'Choose SEVERAL Items', choices = NULL, multiple = TRUE)
+)
+
+server=function(input,output,session){
+  
+  #DatafromMytable=read.csv("mytable.csv", header=TRUE, sep=";")
+  DatafromMytable=data.frame(Size=c('small','small','big','big'),Item=c(1,2,3,4))
+  
+  mysubset= reactive ({
+    subset(DatafromMytable,Size==input$selecter)
+  })
+  
+  observeEvent( mysubset(),{
+    updateSelectizeInput(session, "chooser", choices = mysubset()$Item) 
+  })
+  
+}
+
+shinyApp(ui, server)
